@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>VerifiedWorks Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">VW</span>
+      <span>VerifiedWorks <span class="muted">Admin</span></span>
+    </div>
+    <div class="session" id="session" hidden>
+      <span id="whoami" class="muted"></span>
+      <button class="btn ghost" id="signout" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" hidden aria-label="Admin sections">
+    <a href="#overview" data-tab="overview">Overview</a>
+    <a href="#keys" data-tab="keys">Card keys</a>
+    <a href="#users" data-tab="users">Users</a>
+    <a href="#withdrawals" data-tab="withdrawals">Withdrawals</a>
+    <a href="#settings" data-tab="settings">Settings</a>
+  </nav>
+
+  <main>
+    <!-- First run: create the admin account -->
+    <section id="view-setup" class="auth-card" hidden>
+      <h1>Create the admin account</h1>
+      <p class="muted">This only happens once. Pick a username and a strong password.</p>
+      <p class="notice warn" id="setup-remote" hidden>
+        For safety, the admin account can only be created from the server itself.
+        Open <code>http://localhost:4000/admin</code> on the PC that runs the backend.
+      </p>
+      <form id="setup-form" autocomplete="off">
+        <label>Username<input name="username" required minlength="3" maxlength="32" autocomplete="username"></label>
+        <label>Password<input name="password" type="password" required minlength="10" autocomplete="new-password"></label>
+        <label>Confirm password<input name="confirm" type="password" required minlength="10" autocomplete="new-password"></label>
+        <p class="error" data-error></p>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+    </section>
+
+    <!-- Sign in -->
+    <section id="view-login" class="auth-card" hidden>
+      <h1>Sign in</h1>
+      <form id="login-form">
+        <label>Username<input name="username" required autocomplete="username"></label>
+        <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+        <p class="error" data-error></p>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <!-- Signed in -->
+    <div id="view-panel" hidden>
+
+      <!-- Overview -->
+      <section id="tab-overview" class="tab" hidden>
+        <div class="page-head">
+          <h1>Overview</h1>
+          <button class="btn ghost" id="refresh" type="button">Refresh</button>
+        </div>
+
+        <div class="stats">
+          <article class="stat">
+            <span class="stat-label">Registered users</span>
+            <strong class="stat-value" id="s-users">0</strong>
+            <span class="stat-sub" id="s-users-sub"></span>
+          </article>
+          <article class="stat">
+            <span class="stat-label">Users with access</span>
+            <strong class="stat-value" id="s-access">0</strong>
+            <span class="stat-sub" id="s-access-sub"></span>
+          </article>
+          <article class="stat accent">
+            <span class="stat-label">Waiting for a key</span>
+            <strong class="stat-value" id="s-waiting">0</strong>
+            <span class="stat-sub">Signed up but locked out</span>
+          </article>
+          <article class="stat">
+            <span class="stat-label">Unassigned keys</span>
+            <strong class="stat-value" id="s-unassigned">0</strong>
+            <span class="stat-sub">Ready to hand out</span>
+          </article>
+        </div>
+
+        <div class="grid">
+          <section class="card">
+            <h2>Waiting for a key</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>User</th><th>Joined</th><th class="right"></th></tr></thead>
+                <tbody id="waiting-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Recent users</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>User</th><th>Joined</th><th>Access</th></tr></thead>
+                <tbody id="users-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Card keys -->
+      <section id="tab-keys" class="tab" hidden>
+        <div class="page-head">
+          <div>
+            <h1>Card keys</h1>
+            <p class="muted small">Keys are made here and attached to accounts. Users can't create, enter or remove keys in the app.</p>
+          </div>
+        </div>
+
+        <div class="grid keys-grid">
+          <section class="card">
+            <h2>Generate keys</h2>
+            <form id="generate-form" autocomplete="off">
+              <label>Give to user
+                <input name="user" placeholder="Username or email" spellcheck="false">
+                <span class="hint">Leave empty to make unassigned keys you hand out later.</span>
+              </label>
+              <div class="row">
+                <label>Quantity
+                  <input name="count" type="number" min="1" max="50" step="1" value="1" required>
+                </label>
+                <label>Access length
+                  <select name="validity">
+                    <option value="0">Lifetime</option>
+                    <option value="7">7 days</option>
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="365">1 year</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+              </div>
+              <label id="custom-days" hidden>Days
+                <input name="days" type="number" min="1" max="3650" step="1" value="14">
+              </label>
+              <label>Note
+                <input name="note" maxlength="120" placeholder="Optional, e.g. paid by M-Pesa">
+              </label>
+              <p class="error" data-error></p>
+              <button class="btn primary" type="submit">Generate</button>
+            </form>
+          </section>
+
+          <section class="card" id="new-keys-card" hidden>
+            <div class="card-head">
+              <h2>Just generated</h2>
+              <button class="btn small" id="copy-all" type="button">Copy all</button>
+            </div>
+            <p class="muted small" id="new-keys-note"></p>
+            <ul class="key-list" id="new-keys"></ul>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="toolbar">
+            <div class="chips" id="key-filters" role="tablist" aria-label="Filter keys">
+              <button type="button" class="chip" data-state="">All <span></span></button>
+              <button type="button" class="chip" data-state="unassigned">Unassigned <span></span></button>
+              <button type="button" class="chip" data-state="active">Active <span></span></button>
+              <button type="button" class="chip" data-state="expired">Expired <span></span></button>
+              <button type="button" class="chip" data-state="revoked">Revoked <span></span></button>
+            </div>
+            <input class="search" id="key-search" type="search" placeholder="Search key, note, user" spellcheck="false">
+          </div>
+          <div class="table-wrap wide">
+            <table>
+              <thead><tr><th>Key</th><th>Owner</th><th>Access</th><th>Source</th><th>Created</th><th class="right">Actions</th></tr></thead>
+              <tbody id="keys-body"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="keys-pager"></div>
+        </section>
+      </section>
+
+      <!-- Users -->
+      <section id="tab-users" class="tab" hidden>
+        <div class="page-head">
+          <h1>Users</h1>
+        </div>
+        <section class="card">
+          <div class="toolbar">
+            <input class="search" id="user-search" type="search" placeholder="Search username or email" spellcheck="false">
+          </div>
+          <div class="table-wrap wide">
+            <table>
+              <thead><tr><th>User</th><th>Joined</th><th>Access</th><th>Tasks</th><th>Balance</th><th class="right">Actions</th></tr></thead>
+              <tbody id="all-users-body"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="users-pager"></div>
+        </section>
+      </section>
+
+      <!-- Withdrawals -->
+      <section id="tab-withdrawals" class="tab" hidden>
+        <div class="page-head">
+          <div>
+            <h1>Withdrawals</h1>
+            <p class="muted small" id="withdrawals-open"></p>
+          </div>
+        </div>
+        <section class="card">
+          <div class="toolbar">
+            <label class="inline">Status
+              <select id="withdrawal-status">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="payout_unknown">Unconfirmed</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+            </label>
+          </div>
+          <div class="table-wrap wide">
+            <table>
+              <thead><tr><th>User</th><th>PayPal</th><th>Amount</th><th>Status</th><th>Requested</th><th>Processed</th></tr></thead>
+              <tbody id="withdrawals-body"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="withdrawals-pager"></div>
+        </section>
+      </section>
+
+      <!-- Settings -->
+      <section id="tab-settings" class="tab" hidden>
+        <div class="page-head">
+          <h1>Settings</h1>
+        </div>
+
+        <div class="grid">
+          <section class="card" id="paypal-card">
+            <h2>PayPal payouts</h2>
+            <p class="muted small" id="paypal-status"></p>
+            <form id="paypal-form" autocomplete="off">
+              <label>Mode
+                <select name="mode">
+                  <option value="sandbox">Sandbox (testing, no real money)</option>
+                  <option value="live">Live (real payments)</option>
+                </select>
+              </label>
+              <label>Client ID<input name="clientId" required spellcheck="false" autocomplete="off"></label>
+              <label>Secret
+                <input name="clientSecret" type="password" spellcheck="false" autocomplete="new-password">
+                <span class="hint" id="secret-hint"></span>
+              </label>
+              <p class="error" data-error></p>
+              <p class="success" data-success></p>
+              <button class="btn primary" type="submit">Check with PayPal and save</button>
+            </form>
+            <p class="muted small">
+              Used to pay out user withdrawals. Find these in the PayPal Developer Dashboard under Apps &amp; Credentials. Sandbox and live
+              each have their own Client ID and Secret.
+            </p>
+          </section>
+
+          <section class="card">
+            <h2>Change admin password</h2>
+            <form id="password-form">
+              <label>Current password<input name="currentPassword" type="password" required autocomplete="current-password"></label>
+              <label>New password<input name="newPassword" type="password" required minlength="10" autocomplete="new-password"></label>
+              <label>Confirm new password<input name="confirm" type="password" required minlength="10" autocomplete="new-password"></label>
+              <p class="error" data-error></p>
+              <p class="success" data-success></p>
+              <button class="btn" type="submit">Change password</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Shared dialog for assign, extend, give key and credit -->
+  <dialog id="dlg">
+    <form id="dlg-form" method="dialog">
+      <h2 id="dlg-title"></h2>
+      <p class="muted small" id="dlg-text"></p>
+      <div id="dlg-fields"></div>
+      <p class="error" data-error></p>
+      <div class="dlg-actions">
+        <button class="btn ghost" type="button" id="dlg-cancel">Cancel</button>
+        <button class="btn primary" type="submit" id="dlg-ok">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

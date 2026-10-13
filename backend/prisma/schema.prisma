@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String
+  inviteCode    String   @unique
+  invitedBy     String?
+  firstName     String?
+  lastName      String?
+  city          String?
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  cardKeys          CardKey[]
+  payments          Payment[]
+  taskRecords       TaskRecord[]
+  withdrawals       Withdrawal[]
+  walletEntries     WalletLedgerEntry[]
+  linkedWallets     LinkedWallet[]
+  sentTransfers     Transfer[]          @relation("TransferSender")
+  receivedTransfers Transfer[]          @relation("TransferRecipient")
+}
+
+model CardKey {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  deviceId   String?
+  /// "active" or "revoked"
+  status     String    @default("active")
+  /// Days of access once assigned to a user. 0 means lifetime.
+  validDays  Int       @default(30)
+  /// Set when the key is assigned. Null on an assigned key means lifetime access.
+  expiresAt  DateTime?
+  assignedAt DateTime?
+  /// Admin's own label, e.g. who the key was made for.
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  payment Payment?
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  provider          String   @default("paypal")
+  providerOrderId   String   @unique
+  providerPaymentId String?
+  amount            Int
+  currency          String   @default("USD")
+  status            String   @default("pending")
+  cardKeyId         String?  @unique
+  cardKey           CardKey? @relation(fields: [cardKeyId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Withdrawal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  provider    String @default("paypal")
+  destination String
+  amount      Int
+  currency    String @default("USD")
+
+  status           String  @default("pending")
+  providerPayoutId String? @unique
+  idempotencyKey   String? @unique
+  failureReason    String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  processedAt DateTime?
+
+  walletEntries WalletLedgerEntry[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+
+model TaskRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  challengeId String?  @unique
+  kind        String
+  difficulty  String   @default("medium")
+  correct     Boolean
+  points      Int      @default(0)
+  rewardCents Int      @default(0)
+  durationMs  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  codeHash  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+/// Key/value settings managed from the admin panel.
+/// Secret values must be encrypted by the application.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model WalletLedgerEntry {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  withdrawalId String?
+  withdrawal   Withdrawal? @relation(fields: [withdrawalId], references: [id])
+
+  amount         Int
+  type           String
+  sourceType     String
+  sourceId       String?
+  idempotencyKey String   @unique
+  description    String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([withdrawalId])
+  @@index([sourceType, sourceId])
+}
+
+model LinkedWallet {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  provider          String
+  accountIdentifier String
+  status            String @default("pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId, createdAt])
+}
+
+model Transfer {
+  id String @id @default(cuid())
+
+  senderId String
+  sender   User   @relation("TransferSender", fields: [senderId], references: [id])
+
+  recipientId String
+  recipient   User   @relation("TransferRecipient", fields: [recipientId], references: [id])
+
+  amount         Int
+  currency       String @default("USD")
+  status         String @default("completed")
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([senderId, createdAt])
+  @@index([recipientId, createdAt])
+}

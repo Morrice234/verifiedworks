@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "VerifiedWorks",
+    "slug": "verifiedworks",
+    "version": "1.0.0",
+    "scheme": "verifiedworks",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.example.verifiedworks",
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
